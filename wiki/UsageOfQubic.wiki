@@ -1,4 +1,4 @@
-#labels qubic,bicluster,expressiondata,microarray
+#labels qubic,bicluster,expressiondata,Featured,Phase-Implementation
 A qualitative biclustering algorithm for analyses of gene expression data
 
 
