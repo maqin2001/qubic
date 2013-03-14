@@ -10,7 +10,6 @@ Certain parts of the code uses open-source data structure library codes, includi
   *- Mark A. Weiss's data structure codes <http://www.cs.fiu.edu/~weiss/>
 
 =Installation=
-
 Simply put "qubic.tar.gz" in any directory,type
   _$ tar zxvf qubic.tar.gz_
 enter the folder '*qubic*' and type '*make*' then the compiled codes are within the same directory as the source.
