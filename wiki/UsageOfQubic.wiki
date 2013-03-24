@@ -62,7 +62,7 @@ For each of these parameters, we allow the user to adjust the default value to p
 
 =Contact=
 Any questions, problems, bugs are welcome and should be dumped to 
-  * Qin Ma <maqin2001@gmail.com>
+  * Qin Ma <maqin@uga.edu>
   * Haibao Tang <htang@jcvi.org>
 
 Creation: Dec. 16, 2008
