@@ -59,6 +59,8 @@ For each of these parameters, we allow the user to adjust the default value to p
     #_$./qubic -i A.chars -b B.blocks -s
   and the program will generate a '*B.blocks.expansion*' file, containing the enlarged biclusters in 'B.blocks'.
 
+=Results access=
+The related data sets and results can be found at http://csbl.bmb.uga.edu/~maqin/bicluster/benchmark.html.
 
 =Contact=
 Any questions, problems, bugs are welcome and should be dumped to 
