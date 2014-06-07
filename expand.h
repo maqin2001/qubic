@@ -23,6 +23,10 @@ extern int rows, cols, sigma;
 extern char **alloc2c (int rr, int cc);
 extern void print_bc (FILE* fw, Block *b, int num);
 
+extern continuous get_KL (discrete *array, discrete *array_background, int a, int b);
+
+extern discrete *get_intersect_row(const bool *colcand, discrete *g1, discrete *g2, int cnt);
+extern discrete *get_intersect_reverse_row(const bool *colcand, discrete *g1, discrete *g2, int cnt);
 static int intersect_row(const bool *colcand, discrete *g1, discrete *g2, const int cols);
 static int reverse_row(const bool *colcand, discrete *g1, discrete *g2, const int cols);
 void get_chars_size(FILE *fp);

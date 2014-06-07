@@ -2,6 +2,7 @@
 #define _CLUSTER_H
 
 #include "struct.h"
+#include <gsl/gsl_cdf.h>
 
 /* this structure holds the matching score for each row */
 struct rowMatch
@@ -19,6 +20,9 @@ extern void seed_update (const discrete *s);
 /* write_block */
 extern void scan_block (struct dyStack *gene_set, Block *b_ptr);
 extern void print_bc (FILE *fw, Block *b, int num);
+extern void block_enrichment (FILE* fw, Block **b, int num);
+/* read_file*/
+extern continuous get_KL (discrete *array, discrete *array_background, int a, int b);
 
 /* prototypes */
 static int compare_int (const void *a, const void *b);
@@ -32,8 +36,11 @@ int cluster (FILE *fw, Edge **el, int n);
 static int report_blocks(FILE *fw, Block **bb, int num);
 static void sort_block_list(Block **el, int n);
 static void block_init(Edge *e, Block *b, struct dyStack *genes, struct dyStack *scores,
-bool *candidates, const int cand_threshold,int *components, struct dyStack *allincluster, long double *pvalues);
+bool *candidates, const int cand_threshold,int *components, struct dyStack *allincluster);
 long double get_pvalue (continuous a, int b);
+discrete *get_intersect_row(const bool *colcand, discrete *g1, discrete *g2, int cnt);
+discrete *get_intersect_reverse_row(const bool *colcand, discrete *g1, discrete *g2, int cnt);
+
 
 bits16 **profile;
 

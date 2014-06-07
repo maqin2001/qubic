@@ -16,6 +16,8 @@
 #include <sys/time.h>
 #include <time.h>
 #include "fib.h"
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_cdf.h>
 
 /***** Useful macros *****/
 
@@ -69,13 +71,14 @@ typedef short discrete;
 continuous **arr;
 discrete **arr_c;
 discrete *symbols;
-char **genes;
+char **genes_n;
 char **conds;
 char **sub_genes;
 bool *sublist;
 int rows, cols, sigma;
 int TFindex;
 int sub_genes_row;
+continuous *density;
 /***** Structures *****/
 
 struct dyStack
@@ -110,17 +113,24 @@ typedef struct Prog_options{
 	char FN[LABEL_LEN];
 	char BN[LABEL_LEN];
 	char LN[LABEL_LEN];
+	char MN[LABEL_LEN];
 	bool IS_SWITCH;
 	bool IS_DISCRETE;
 	bool IS_TFname;
-	bool IS_pvalue;
 	bool IS_area;
 	bool IS_cond;
 	bool IS_list;
+	bool IS_density;
+	bool IS_spearman;
+	bool IS_new_discrete; 
+	bool IS_rpkm; 
+	bool IS_Fast;
+	bool IS_2to9;
 	int COL_WIDTH;
 	int DIVIDED;
 	int SCH_BLOCK;
 	int RPT_BLOCK;
+	int EM;
 	double FILTER;
 	double QUANTILE;
 	double TOLERANCE;
@@ -128,6 +138,7 @@ typedef struct Prog_options{
 	FILE* FP;
 	FILE* FB;
 	FILE* FL;
+	FILE* FM;
 } Prog_options;
 
 typedef unsigned short int bits16;

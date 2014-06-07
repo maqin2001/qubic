@@ -1,5 +1,5 @@
 /************************************************************************/
-/* Author: Qin Ma <maqin@csbl.bmb.uga.edu>, Jan. 25, 2010
+/* Author: Qin Ma <maqin@uga.edu>, Step. 19, 2013
  * Biclustering expansion, greedy add the possible genes and negatively regulated
  * genes from outside of the current bicluster in a given background
  */
@@ -135,7 +135,7 @@ void store_block(Block *b_ptr, struct dyStack *ge, struct dyStack *co)
 }
 static void init_expand()
 {
-	another_genes = genes;
+	another_genes = genes_n;
 	another_conds = conds;
 	another_arr_c = arr_c;
 	another_rows = rows;
@@ -160,6 +160,7 @@ void read_and_solve_blocks(FILE *fb, const char *fn)
 	ge = dsNew(another_rows);
 	co = dsNew(another_cols);
 	FILE *fo = mustOpen(fn, "w");
+	discrete *sub_array;
 
 	/* main course starts here */
 	while (getline(&line, &n, fb) != -1)
@@ -216,15 +217,22 @@ void read_and_solve_blocks(FILE *fb, const char *fn)
 		
 		b->block_rows_pre = components;
 		/* add some possible genes */
+		continuous KL_score =0, KL_score_ave = 0;
+		sub_array = get_intersect_row(colcand,another_arr_c[dsItem(ge,0)],another_arr_c[dsItem(ge,components-1)],col);
+                KL_score_ave = get_KL (sub_array, another_arr_c[dsItem(ge,components-1)], col, another_cols);
 		for( i = 0; i < another_rows; i++)
 		{
 			m_cnt = intersect_row(colcand, another_arr_c[dsItem(ge,0)], another_arr_c[i], another_cols);
-			/*printf ("%d\n",m_cnt);*/
 			if( candidates[i] && (m_cnt >= (int)floor( (double)col * po->TOLERANCE)) )
 			{
-				dsPush(ge,i);
-				components++;
-				candidates[i] = FALSE;
+				sub_array = get_intersect_row(colcand,another_arr_c[dsItem(ge,0)],another_arr_c[i],m_cnt);
+                              	KL_score = get_KL (sub_array, another_arr_c[i], m_cnt, another_cols);
+				if (KL_score>=KL_score_ave*po->TOLERANCE)
+				{
+					dsPush(ge,i);
+					components++;
+					candidates[i] = FALSE;
+				}
 			}
 		}
 		/* add genes that negative regulated to the consensus */
@@ -233,9 +241,14 @@ void read_and_solve_blocks(FILE *fb, const char *fn)
 			m_cnt = reverse_row(colcand, another_arr_c[dsItem(ge,0)], another_arr_c[i], another_cols);
 			if( candidates[i] && (m_cnt >= (int)floor( (double)col * po->TOLERANCE)) )
 			{
-				dsPush(ge,i);
-				components++;
-				candidates[i] = FALSE;
+				sub_array = get_intersect_reverse_row(colcand,another_arr_c[dsItem(ge,0)],another_arr_c[i],m_cnt);
+                              	KL_score = get_KL (sub_array, another_arr_c[i], m_cnt, another_cols);
+				if (KL_score>=KL_score_ave*po->TOLERANCE)
+				{
+					dsPush(ge,i);
+					components++;
+					candidates[i] = FALSE;
+				}
 			}
 		}
 		if(dsSize(ge) > 1)
@@ -245,5 +258,4 @@ void read_and_solve_blocks(FILE *fb, const char *fn)
 			print_bc(fo, b, bnumber++);
 		}
 	}
-			printf ("1111\n");
 }

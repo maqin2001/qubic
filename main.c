@@ -1,4 +1,4 @@
-/* Author: Qin Ma <maqin@csbl.bmb.uga.edu>, Jan. 22, 2010
+/* Author: Qin Ma <maqin@uga.edu>, Sept. 19, 2013
  * Usage: This is part of bicluster package. Use, redistribution, modify without limitations
  * show how does the whole program work
  */
@@ -27,8 +27,14 @@ int main(int argc, char* argv[])
 		/*neither rows number nor cols number can be too small*/
 		errAbort("Not enough genes or conditions to make inference");
 	}
-	genes = alloc2c(rows, LABEL_LEN);
+	genes_n = alloc2c(rows, LABEL_LEN);
 	conds = alloc2c(cols, LABEL_LEN);
+
+	/*read dentisy*/
+	/*if (po->IS_density)
+	{
+		read_density (po->FM);
+	}*/
 
 	/* Read in the gene names and condition names */
 	read_labels(po -> FP);	
@@ -41,7 +47,22 @@ int main(int argc, char* argv[])
 		read_continuous(po -> FP);
 		
 		/* formatting rules */
-		discretize(addSuffix(po->FN, ".rules"));
+		if (po->IS_2to9)
+		{	
+			if (po->IS_new_discrete)
+				N2to9 (addSuffix(po->FN, ".rules"));
+			else if (po->IS_rpkm)
+				R2to9 (addSuffix(po->FN, ".rules"));
+		}
+		else
+		{
+			if (po->IS_new_discrete)
+				discretize_new (addSuffix(po->FN, ".rules"));
+			else if (po->IS_rpkm)
+				discretize_rpkm (addSuffix(po->FN, ".rules"));
+			else
+				discretize (addSuffix(po->FN, ".rules"));
+		}
 	}
 	fclose(po->FP);
 
@@ -61,7 +82,9 @@ int main(int argc, char* argv[])
 	{
 		/* formatted file */
 		write_imported(addSuffix(po->FN, ".chars"));
-	
+		/* exit the program without biclustering analysis*/
+		if (po->IS_Fast)
+			exit(1);
 		/* the file that stores all blocks */
 		if (po->IS_list)
 			make_graph(addSuffix(addSuffix(po->FN, po->LN),".block"));

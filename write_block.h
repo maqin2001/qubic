@@ -16,5 +16,6 @@ FILE *fw;
 
 void scan_block (struct dyStack *gene_set, Block *b_ptr);
 void print_bc (FILE* fw, Block *b, int num);
+void block_enrichment (FILE* fw, Block **b, int num);
 
 #endif

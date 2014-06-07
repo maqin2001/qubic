@@ -17,7 +17,12 @@ extern void read_labels (FILE* fp);
 extern void read_discrete (FILE* fp);
 extern void read_continuous (FILE* fp);
 extern void discretize (const char* stream_nm);
+extern void discretize_new (const char* stream_nm);
+extern void discretize_rpkm (const char* stream_nm);
+extern void N2to9(const char* stream_nm);
+extern void R2to9(const char* stream_nm);
 extern void read_list (FILE* fp);
+extern void read_density (FILE* fp);
 
 /*make_graph subroutine prototypes */
 extern void make_graph (const char* fn);

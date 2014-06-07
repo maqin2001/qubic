@@ -1,7 +1,9 @@
 =================
 Usage
-=================
-This software provides a biclustering program for microarray data. For a set of genes and a set of conditions, the program outputs a block-like structure which shows uniform pattern within the block, the block would contain only subsets of all given genes under subsets of all given conditions. 
+==================
+This software provides a biclustering module for microarray data. For a set of genes and a set of conditions, 
+the program outputs a block-like structure which shows uniform pattern within the block, the block would 
+contain only subsets of all given genes under subsets of all given conditions. 
 
 Certain parts of the code uses open-source data structure library codes, including:
 - fib <http://resnet.uoregon.edu/~gurney_j/jmpc/fib.html>, copyright information in fib.c
@@ -10,73 +12,154 @@ Certain parts of the code uses open-source data structure library codes, includi
 ==================
 Installation
 ==================
-Simply put "qubic.tar.gz" in any directory, 
+Simply put "qubicx.x.tar.gz" in any directory, 
 
-$ tar zxvf qubic.tar.gz
+    $ tar zxvf qubicx.x.tar.gz
 
-enter the folder "qubic" and type "make" then the compiled codes are within the same directory as the source.
+enter the folder "qubicx.x" and type 
 
-Now this version is no longer compatible with cypwin...
+    $ make 
+
+then the compiled codes are within the same directory as the source.
 
 ==================
 Inputs and outputs
 ==================
-The major program in the provided package is `qubic`, it can parse two formats of files, discrete data and continuous data, and examples for each are provided. See help and look at all available options.
+The major program in the provided package is `qubic`, it can parse two 
+formats of files, discrete data and continuous data, and examples for each
+are provided. See help and look at all available options.
 
-$ ./qubic -h
+    $ ./qubic -h
 
 Take a look at `toy_example` (discrete data) first. And try to run clustering
 
-$ ./qubic -i toy_example -d
+    $ ./qubic -i data/toy_example -d
 
 -d is important here since it tells the program that this is discrete data.
 
-Then look at a large microarray file of Ecoli (continuous data from http://m3d.bu.edu/norm/). Try to run
+Then look at a larger file `Ecoli` (continuous data). Try to run
 
-$ ./qubic -i Ecoli.microarray -f .25
+    $ ./qubic -i data/example -f .25
 
-This restricts no two output blocks overlap more than 0.25 of the size of each one. And the other parameters are default value.
-
+This restricts no two blocks overlap more than 0.25 of the size of each one. And the other parameters are default value.
 
 For each input file, our program generates three output files, namely,'.blocks' file, '.chars'file and '.rules' file.
 
-In '.blocks' file, you can see all the biclusters the program found, especially, we use a blank line to separate the positively and the negatively (if any) correlated genes in each bicluster.
+In '.blocks' file, you can see all the biclusters the program found, especially, we use a blank line to separate 
+the positively and the negatively (if any) correlated genes in each bicluster.
 
-As to '.chars' file, it provides the qualitative matrix of the microarray data to usrs with some details of how to discrete the data in '.rules' file. You can find further details about how to represent a microarray dataset with a qualitative matrix in our paper.
+As to '.chars' file, it provides the qualitative matrix of the microarray data to usrs with some details of how to 
+discrete the data in '.rules' file. You can find further details about how to represent a microarray dataset with 
+a qualitative matrix in our paper.
 
+==================
+Advanced usages
+==================
+- A new function that can expand identified biclusters in specific environment. Suppose you have two expression matrices
+ A and B, where B is subset of A, you can extend the biclusters of B in the matrix A as following,
+    
+    $ ./qubic -i A
+    
+    $ ./qubic -i B
+    
+    $ ./qubic -i A.chars -b B.blocks -s
+
+and the program will generate a 'B.blocks.expansion' file, containing the enlarged biclusters in 'B.blocks'.
+
+- when we use the parameter -r (>1), we have two methods, quantile_from_sorted_data and quantile_from_sorted_data_value, 
+see details in read_array.c. now the results have each own advantages on GO, KEGG and REGULON.-07.20.2009
+
+- We can just consider the seeds containing to-be-searched gene name, e.g. B1234
+
+    $ ./qubic -i data/example -g b3634
+
+- We can just consider the seeds containing a list of genes, e.g. candidate_list
+
+    $ ./qubic -i Ecoli -l candidate_list
+
+- S: the flag using area as the value of bicluster to determine when stop
+
+    $ ./qubic -i Ecoli -S
+
+- C: the flag using the lower bound of condition number (5 persents of the gene number)
+
+    $ ./qubic -i Ecoli -C
+
+- To enlarge current biclsuter by the pvalue constrain 
+
+    $ ./qubic -i Ecoli -P
+
+- To descretize data by the mixture of normal distribution model
+
+    $ ./qubic -i example -n
+
+- To descretize RPKM data by the mixture of normal distribution model
+
+    $ ./qubic -i example -R
+
+- To descretize data by the mixture of up to 9 normal distribution model
+
+    $ ./qubic -i example -n -9 
+
+- To descretize RPKM data by the mixture of up to 9 normal distribution model
+
+    $ ./qubic -i example -R -9 
+
+- Calculate the similarity between two genes consider spearman correlation and KL-information
+
+    $ ./qubic -i example -p
+
+- The gene descretization base on kernel density estimation is stored in script/discretization-kernal-clustering. 
+
+======================
+Parameters of QUBIC 
+======================
+QUBIC has a number of parameters, namely,
+
+- the range r of possible ranks
+
+- the percentage q of the regulating conditions for each gene
+
+- the required consistency level c for a bicluster (default value is 0.95).
+
+- the desired number o of the output biclusters (default value is 100).
+
+- and the control parameter f for overlaps among to-be-identified biclusters. 
+
+For each of these parameters, we allow the user to adjust the default value to provide some flexibility.
+
+The parameters r and q affect the granularity of the biclusters. A user is recommended to start with 
+a small value of r (the default value is 1 so the corresponding data matrix consists of values +1, -1 and 0), 
+evaluate the results, and then use larger values (should not be larger than half of the number of the columns)
+ to look for fine structures within the identified biclusters. The choice of q's value depends on 
+ the specific application goals; that is if the goal is to find genes that are responsive to local regulators, 
+ we should use a relatively small q-value; otherwise we may want to consider larger q-values. 
+ The default value of q is 0.06 in QUBIC (this value is selected based on the optimal biclustering results on simulated data).
+
+We have a parameter f to control the level of overlaps between to-be-identified biclusters (not discussed in 
+the above algorithm); its default value is set to 1 to ensure that no two reported biclusters overlap more than f.
+
+QUBIC also provides the option (-d) that a user can skip the step of using ranks to represent the 
+actual gene expression values to go directly to the biclustering step on the provided matrix. 
 
 ==================
 Changelog
 ==================
-Version 0.1 
-- prototype of algorithm
+Initial import of Version 2.0
+New features compared to 1.0:
 
-Version 0.2
-- new principle of selecting seeds for real data (make the step more efficient)
-- new function that generate the biclusters (if any) contains the genes usrs provided: usrs can put the genes at hand in a 'genes' file.
+- a new objective function when clustering based on KL function
 
-Version 0.3
--new function that can expand the current blocks generated by our program in specific environment, take 'Ecoli' as an example,
- $./qubic -i Ecoli
- $./qubic -i CRP
- $./qubic -i Ecoli.chars -b CRP.blocks -s
-and the program will generate a 'CRP.blocks.expansion' file containning the enlarged blocks in CRP.blocks.
+- pvalue calculation using gsl library to the makefile (hypergeometric distribution)
 
-Version 0.4
-- when we use the parameter -r (>1), we have two methods, quantile_from_sorted_data and quantile_from_sorted_data_value, see details in read_array.c. now the results  have each own advantages on GO, KEGG and REGULON.-07.20.2009
-
-Version 0.5
-- ollect all the related code of bicluster in the same folder--01/22/2010
-
-Version 1.0
-- add the annotation as more as possible --01/24/2010
-
-
+- a new discretization method based on mixture normal distribution (controled by -n)
+ 
 ==================
 Contact
 ==================
-Any questions, problems, bugs are welcome and should be dumped to Qin Ma <maqin2001@gmail.com>
+Any questions, problems, bugs are welcome and should be dumped to
 
-Creation: Dec. 16, 2008
+Qin Ma <maqin@uga.edu>
 
-#--------------------------------------------------------------#
+Creation: Sept. 19, 2013
+

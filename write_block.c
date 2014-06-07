@@ -1,5 +1,5 @@
 /******************************************************************/
-/* Author: Qin Ma <maqin@csbl.bmb.uga.edu>, Jan. 25, 2010
+/* Author: Qin Ma <maqin@uga.edu>, Step. 19, 2013
  * Output the identified bicluster block.
  */
 
@@ -48,16 +48,19 @@ void print_bc (FILE* fw, Block* b, int num)
 	int i, j;
 	int block_rows, block_cols;
 	int num_1=0,num_2=0;	
+	continuous enrichment=0;
 	/* block height (genes) */
 	block_rows = b->block_rows;
 	/* block_width (conditions) */
 	block_cols = b->block_cols;
+	enrichment = b->score;
+	enrichment = enrichment/100;
 
-	fprintf(fw, "BC%03d\tS=%d\tPvalue:%LG \n", num, block_rows * block_cols, b->pvalue);
+	fprintf(fw, "BC%03d\tS=%d\tEnrichment:%.2f\n", num, block_rows * block_cols, enrichment);
 
 	fprintf(fw, " Genes [%d]: ", block_rows);
 	for (i=0; i<dsSize(b->genes); i++)
-		fprintf(fw, "%s ", genes[dsItem(b->genes, i)]);
+		fprintf(fw, "%s ", genes_n[dsItem(b->genes, i)]);
 	fprintf(fw, "\n");
 
 	fprintf(fw, " Conds [%d]: ", block_cols);
@@ -67,7 +70,7 @@ void print_bc (FILE* fw, Block* b, int num)
 	/* the complete block data output */
 	for (i=0; i<dsSize(b->genes); i++)
 	{
-		fprintf(fw,"%10s:",genes[dsItem(b->genes, i)]);
+		fprintf(fw,"%10s:",genes_n[dsItem(b->genes, i)]);
 		for (j=0; j<dsSize(b->conds); j++)
 		{
 			fprintf(fw, "\t%d", symbols[arr_c[dsItem(b->genes, i)][dsItem(b->conds, j)]]);
@@ -86,3 +89,12 @@ void print_bc (FILE* fw, Block* b, int num)
 }
 
 /******************************************************************/
+/*calculate the cumulative hypergeometric distribution function of (x>k)
+ * hence, if there are 10 among all the 100 population and get 5 among 10 samplings
+ * the input parameters should be 4, 10, 90, 10*/
+void block_enrichment (FILE* fw, Block** b, int num)
+{
+	double hyper=0;
+        hyper = gsl_cdf_hypergeometric_Q (5,10,90,10);
+        /*printf ("%e\n",hyper);*/
+}

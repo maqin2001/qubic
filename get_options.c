@@ -1,4 +1,4 @@
-/* Author:Qin Ma <maqin@csbl.bmb.uga.edu>, Jan. 22, 2010
+/* Author:Qin Ma <maqin@uga.edu>, Step. 19, 2013
  * Usage: This is part of bicluster package. Use, redistribution, modify without limitations
  * Process the options for the commandline tool
  */
@@ -28,23 +28,33 @@ $ ./qubic -i filename [argument list]\n\
      gene1        1        2        2\n\
      gene2       -1        2        0\n\
      -------------------------------------\n\
+-d : the flag to analyze discrete data, where user should discretize their\n\
+     data to different classes of value, see B) above\n\
+     default: FALSE\n\
+-g : a to-be-searched probe name, only consider the seeds containing it\n\
+     default: B1234\n\
+-l : the list of probes from the input file on which qubic will do bicluster\n\
+-b : a .blocks file to be expanded in a specific .chars file\n\
+-s : the flag of doing expansion, used together with -b\n\
+     default: FALSE\n\
+===================================================================\n\
+[Discretization]\n\
+-F : the flag to only do discretization without biclustering\n\
 -q : use quantile discretization for continuous data\n\
      default: 0.06 (see details in Method section in paper)\n\
 -r : the number of ranks as which we treat the up(down)-regulated value\n\
      when discretization\n\
      default: 1\n\
--d : discrete data, where user should send their processed data\n\
-     to different value classes, see above\n\
--b : the file to expand in specific environment\n\
--T : to-be-searched TF name, just consider the seeds containing current TF\n\
-     default format: B1234\n\
--P : the flag to enlarge current biclsuter by the pvalue constrain\n\
--S : the flag using area as the value of bicluster to determine when stop\n\
--C : the flag using the lower bound of condition number (5 persents of the gene number)\n\
--l : the list of genes out of the input file on which we do bicluster\n\
+-n : the flag to discretize the continuous values by a mixture normal distribution model\n\
+     default: FALSE\n\
+-R : the flag to discretize the RPKM values by a mixture normal distribution model\n\
+     default: FALSE\n\
+-9 : the flag to discretize data to upto 9 normal disctributions\n\
+     default: FALSE (always use along with -n or -R)\n\
+-e : the number of iterations in EM algorithm when using -n or -R\n\
+     default: FALSE\n\
 ===================================================================\n\
-[Output]\n\
--o : number of blocks to report, default: 100\n\
+[Biclustering]\n\
 -f : filtering overlapping blocks,\n\
      default: 1 (do not remove any blocks)\n\
 -k : minimum column width of the block,\n\
@@ -53,7 +63,18 @@ $ ./qubic -i filename [argument list]\n\
      number of identical valid symbols in a column and the total number \n\
      of rows in the output\n\
      default: 0.95\n\
--s : expansion flag\n\
+-p : the flag to calculate the spearman correlation between any pair of genes\n\
+     this can capture more reliable relationship but much slower\n\
+     default: FALSE\n\
+-C : the flag using the lower bound of condition number\n\
+     default: 5% of the gene number in current bicluster\n\
+===================================================================\n\
+[Output]\n\
+-o : number of blocks to report\n\
+     default: 100\n\
+-S : the flag using area as the objective value of a bicluster\n\
+     and the identified bicluster will sorted by area\n\
+     default: FALSE\n\
 ===================================================================\n";
 
 static void init_options ()
@@ -68,12 +89,11 @@ static void init_options ()
 	strcpy(po->TFname, " ");
 	po->IS_DISCRETE = FALSE;
 	po->IS_TFname = FALSE;
-	po->IS_pvalue = FALSE;
-	po->COL_WIDTH = 2;
+	po->COL_WIDTH = 3;
 	po->DIVIDED = 1;
 	/*.06 is set as default for its best performance for ecoli and yeast functional analysis*/
 	po->QUANTILE = .06;
-	po->TOLERANCE = .95;
+	po->TOLERANCE = 1;
 	po->FP = NULL;
 	po->FB = NULL;
 	po->RPT_BLOCK = 100;
@@ -83,6 +103,11 @@ static void init_options ()
 	po->IS_area = FALSE;
 	po->IS_cond = FALSE;
 	po->IS_list = FALSE;
+	/*po->IS_density = FALSE;*/
+	po->IS_new_discrete = FALSE;
+	po->IS_2to9 = FALSE;
+	po->IS_Fast = FALSE;
+	po->EM = 100;
 }
 
 /*argc is a count of the arguments supplied to the program and argc[] is an array of pointers to the strings which are those arguments-its type is array of pointer to char
@@ -104,7 +129,7 @@ void get_options (int argc, char* argv[])
 	 *If an option character is followed by two colons (::), its argument is optional
 	 *if an option character is followed by no colons, it does not need argument
 	 */
-	while ((op = getopt(argc, argv, "i:b:q:r:dsf:k:o:c:T:PSCl:h")) >0)
+	while ((op = getopt(argc, argv, "i:b:q:r:dsf:k:o:c:g:SCl:m:e:pnRF9h")) >0)
 	{
 		switch (op)
 		{
@@ -131,11 +156,17 @@ void get_options (int argc, char* argv[])
 			 *break is normally used to jump to the end of the current block of code
 			 *exit is normally used to shut down the current process
 			 */
-			case 'T': strcpy(po->TFname, optarg); po->IS_TFname = TRUE; break;
-			case 'P': po->IS_pvalue = TRUE; break; 
+			case 'g': strcpy(po->TFname, optarg); po->IS_TFname = TRUE; break;
 			case 'S': po->IS_area = TRUE; break; 
-			case 'C': po->IS_cond = TRUE; break; 
+			case 'C': po->IS_cond = TRUE; break;
 			case 'l': strcpy(po->LN, optarg); po->IS_list =TRUE; break;
+			/*case 'm': strcpy(po->MN, optarg); po->IS_density =TRUE; break;*/
+			case 'e': po->EM = atoi(optarg); break;
+			case 'p': po->IS_spearman = TRUE; break;
+			case 'n': po->IS_new_discrete = TRUE; break;
+			case 'R': po->IS_rpkm = TRUE; break;
+			case 'F': po->IS_Fast = TRUE; break;
+			case '9': po->IS_2to9 = TRUE; break;
 			case 'h': puts(USAGE); exit(0); 
 			/*if expression does not match any constant-expression, control is transferred to the statement(s) that follow the optional default label*/
 			default : is_valid = FALSE;
@@ -160,6 +191,11 @@ void get_options (int argc, char* argv[])
 	if (po->IS_list)
 	{
 		po->FL = mustOpen(po->LN, "r");
+	}
+
+	if (po->IS_density)
+	{
+		po->FM = mustOpen(po->MN, "r");
 	}
 	
 	/* option value range check */

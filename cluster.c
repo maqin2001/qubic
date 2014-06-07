@@ -1,5 +1,5 @@
 /************************************************************************/
-/* Author: Qin Ma <maqin@csbl.bmb.uga.edu>, Jan. 25, 2010
+/* Author: Qin Ma <maqin@uga.edu>, Step. 19, 2013
  * Biclustering procedure, greedy heuristic by picking an edge with highest
  * score and then dynamically adding vertices into the block and see if 
  * the block score can be improved.
@@ -21,6 +21,26 @@ static void update_colcand(bool *colcand, discrete *g1, discrete *g2)
 	for (i=0; i< cols; i++)
 		if (colcand[i] && (g1[i] != g2[i])) 
 			colcand[i] = FALSE;
+}
+discrete *get_intersect_row(const bool *colcand, discrete *g1, discrete *g2, int cnt)
+{
+	discrete *array;
+	AllocArray (array, cnt);
+	int i, j=0;
+        for (i=0; i< cols; i++)
+		if (colcand[i] && (g1[i] == g2[i]))
+                        array[j++] = g1[i];
+        return array;
+}
+discrete *get_intersect_reverse_row(const bool *colcand, discrete *g1, discrete *g2, int cnt)
+{
+	discrete *array;
+	AllocArray (array, cnt);
+	int i, j=0;
+        for (i=0; i< cols; i++)
+		if (colcand[i] && (symbols[g1[i]] == -symbols[g2[i]]))
+                        array[j++] = g1[i];
+        return array;
 }
 static int intersect_row(const bool *colcand, discrete *g1, discrete *g2)
 /*caculate the weight of the edge with two vertices g1 and g2*/
@@ -51,6 +71,7 @@ static void seed_current_modify (const discrete *s, bool *colcand, int* cnt, int
 {
 	int i, k, flag, n;
 	int threshold = ceil(components * po->TOLERANCE);
+	if (components<10) threshold = ceil(components*0.95);
 	discrete ss;
 	*cnt = 0;
 	for (i=0; i<cols; i++)
@@ -129,12 +150,12 @@ static bool check_seed(Edge *e, Block **bb, const int block_id)
 static void block_init(Edge *e, Block *b, 
                      struct dyStack *genes, struct dyStack *scores,
                      bool *candidates, const int cand_threshold,
-                     int *components, struct dyStack *allincluster, long double *pvalues)
+                     int *components, struct dyStack *allincluster)
 {
-	int i,score,top;
-	int cnt = 0, cnt_all=0, pid=0;
+	int i,j=0,score,top;
+	int cnt = 0, cnt_all=0, col_num=0;
 	continuous cnt_ave=0, row_all = rows;
-	long double pvalue;
+	double pvalue=0;
 	int max_cnt, max_i;
 	int *arr_rows, *arr_rows_b;
 	AllocArray(arr_rows, rows);
@@ -144,11 +165,27 @@ static void block_init(Edge *e, Block *b,
 	for (i=0; i< cols; i++) 
 		colcand[i] = FALSE;
 	discrete *g1, *g2;
+	discrete *sub_array, col_array[2], col_all[rows];
+	continuous KL_score[cols],KL_score_c=0, KL_score_r=0;
 	g1 = arr_c[dsItem(genes,0)];
 	g2 = arr_c[dsItem(genes,1)];
+
+	/*update intial colcand*/
 	for (i=0; i< cols; i++)
-		if ((g1[i] == g2[i])&&(g1[i]!=0)) 
+	{
+		if ((g1[i] == g2[i])&&(symbols[g1[i]]!=0)) 
+		{
 			colcand[i] = TRUE;
+			for (j=0;j<rows;j++)
+				col_all[j]=arr_c[j][i];
+			col_array[0]=col_array[1]=symbols[g1[i]];
+	                KL_score[i] = get_KL (col_array, col_all, 2, rows);
+			KL_score_c += KL_score[i];
+			col_num++;
+		}
+	}
+	KL_score_c = KL_score_c/col_num;
+			
 
 	for (i = 0; i < rows; i++)
 	{
@@ -166,10 +203,10 @@ static void block_init(Edge *e, Block *b,
 			if (arr_rows[i] < top) 
 				candidates[i] = FALSE;
 	}
+
 	/*calculate the condition low bound for current seed*/
 	int cutoff = floor (0.05*rows);
 	b->cond_low_bound = arr_rows_b[rows-cutoff];
-
 
 	while (*components < rows)
 	{
@@ -196,26 +233,68 @@ static void block_init(Edge *e, Block *b,
 			}
 		}
 		cnt_ave = cnt_all/row_all;
-		pvalue = get_pvalue (cnt_ave, max_cnt);
+		/*pvalue = get_pvalue (cnt_ave, max_cnt);*/
+
+		/* reconsider the genes with cnt=max_cnt when expand current bicluster base on the cwm-like significant of each row */
+		if (max_cnt>0)
+		{
+			KL_score_r = 0;
+			/*KL_score_max = 0;
+			for (i=0; i< rows; i++)
+			{
+				if (!candidates[i]) continue;
+                	        if (po->IS_list && !sublist[i]) continue;
+                        	cnt = intersect_row(colcand,arr_c[dsItem(genes,0)],arr_c[i]);
+				if (cnt == max_cnt)
+				{
+					sub_array = get_intersect_row(colcand,arr_c[dsItem(genes,0)],arr_c[i],cnt);
+					KL_score = get_KL (sub_array, arr_c[i], cnt, cols);
+					if (KL_score > KL_score_max)
+					{
+						max_cnt = cnt;
+						max_i = i;
+					}
+				}
+			}*/
+			sub_array = get_intersect_row(colcand,arr_c[dsItem(genes,0)],arr_c[max_i],max_cnt);
+	                KL_score_r = get_KL (sub_array, arr_c[max_i], max_cnt, cols);
+                	for (j=0;j<*components-1;j++)
+        	                KL_score_r += get_KL (sub_array, arr_c[dsItem(genes,j)], max_cnt, cols);
+        	        KL_score_r = KL_score_r/(*components);
+			for (j=0;j<cols;j++)
+			{
+				if (colcand[j] && (arr_c[max_i][j] != arr_c[dsItem(genes,0)][j]))
+				{
+					KL_score_c += (KL_score_c-KL_score[j])/(col_num-1);
+					col_num--;
+				}
+			}
+			pvalue = max_cnt/cnt_ave;
+		}
+		/*printf ("%d\t%.2f\t%.2f\t%.2f\n",max_cnt, KL_score_r, KL_score_c, pvalue);*/
 		if (po->IS_cond)
 		{
-			if (max_cnt < po->COL_WIDTH || max_i < 0|| max_cnt < b->cond_low_bound) break;
+			if (max_cnt < po->COL_WIDTH || max_i < 0 || max_cnt < b->cond_low_bound) break;
 		}
 		else
 		{
 			if (max_cnt < po->COL_WIDTH || max_i < 0) break;
 		}
+
+		/*printf ("%d\t%d\n",*components, max_cnt);*/
 		if (po->IS_area)
 			score = *components*max_cnt;
 		else
-			score = MIN(*components, max_cnt);
+			score = floor(100*(KL_score_r+KL_score_c));
+	/*		score = floor(100*KL_score_r*pvalue);*/
+		/*	score = MIN(*components, max_cnt);*/
 		if (score > b->score) 
+		{
 			b->score = score;
-		if (pvalue < b->pvalue)
-			b->pvalue = pvalue;
+			b->significance = KL_score_r;
+		}
 		dsPush(genes, max_i);
 		dsPush(scores,score);
-		pvalues[pid++] = pvalue;
 		update_colcand(colcand,arr_c[dsItem(genes,0)], arr_c[max_i]);
 		candidates[max_i] = FALSE;
 	}
@@ -245,8 +324,6 @@ int cluster (FILE *fw, Edge **el, int n)
 	allincluster = dsNew(rows);
 
     
-	long double *pvalues;
-	AllocArray(pvalues, rows);
 
 	bool *candidates;
 	AllocArray(candidates, rows);
@@ -255,6 +332,7 @@ int cluster (FILE *fw, Edge **el, int n)
 	i = 0;
 	while (i++ < n)
 	{	
+		/*printf ("%d\n",i);*/
 		e = *el++;
 		/* check if both genes already enumerated in previous blocks */
 		bool flag = TRUE;
@@ -286,8 +364,6 @@ int cluster (FILE *fw, Edge **el, int n)
 		AllocVar(b);
 		/*initial the b->score*/
                 b->score = MIN(2, e->score);
-		/*initial the b->pvalue*/
-		b->pvalue = 1;
 	
 		/* initialize the stacks genes and scores */		
 		int ii;		
@@ -301,6 +377,7 @@ int cluster (FILE *fw, Edge **el, int n)
 		dsClear(genes);
 		dsClear(scores);
 		
+		/*printf ("%d\t%d\n",e->gene_one,e->gene_two);*/
 		dsPush(genes, e->gene_one);
 		dsPush(genes, e->gene_two);
 		dsPush(scores, 1);
@@ -318,16 +395,16 @@ int cluster (FILE *fw, Edge **el, int n)
 		components = 2;
 
 		/* expansion step, generate a bicluster without noise */
-		block_init(e, b, genes, scores, candidates, cand_threshold, &components, allincluster, pvalues);
+		block_init(e, b, genes, scores, candidates, cand_threshold, &components, allincluster);
 
 		/* track back to find the genes by which we get the best score*/
 		for(k = 0; k < components; k++)
 		{
-			if (po->IS_pvalue)
-				if ((pvalues[k] == b->pvalue) &&(k >= 2) &&(dsItem(scores,k)!=dsItem(scores,k+1))) break;
+/*			printf ("******%d\t%d\n",dsItem(scores,k),b->score);*/
 			if ((dsItem(scores,k) == b->score)&&(dsItem(scores,k+1)!= b->score)) break;
 		}
 		components = k + 1;
+		/*printf ("%d",components);*/
 		int ki;
 		for (ki=0; ki < rows; ki++)
 			candidates[ki] = TRUE;
@@ -349,18 +426,27 @@ int cluster (FILE *fw, Edge **el, int n)
 		seed_current_modify(arr_c[dsItem(genes,k)], colcand, &cnt, components);
 		
 		/* add some new possible genes */
-		int m_cnt;
+		int m_cnt=0;
+		continuous KL_score=0;
+		discrete *sub_array;
 		for ( ki = 0; ki < rows; ki++)
 		{
 			if (po->IS_list && !sublist[ki]) continue;
 			m_cnt = intersect_row(colcand, arr_c[dsItem(genes,0)], arr_c[ki]);
 			if ( candidates[ki] && (m_cnt >= floor(cnt* po->TOLERANCE)) )
 			{
-				dsPush(genes,ki);
-				components++;
-				candidates[ki] = FALSE;
+				sub_array = get_intersect_row(colcand,arr_c[dsItem(genes,0)],arr_c[ki],m_cnt);
+				KL_score = get_KL (sub_array, arr_c[ki], m_cnt, cols);
+				/*printf ("%d\t%.2f\n",m_cnt,KL_score);*/
+				if (KL_score>=b->significance * po->TOLERANCE)
+				{
+					dsPush(genes,ki);
+					components++;
+					candidates[ki] = FALSE;
+				}
 			}
 		}
+
                 b->block_rows_pre = components;
 		
 		/* add genes that negative regulated to the consensus */
@@ -370,9 +456,14 @@ int cluster (FILE *fw, Edge **el, int n)
 			m_cnt = reverse_row(colcand, arr_c[dsItem(genes,0)], arr_c[ki]);
 			if ( candidates[ki] && (m_cnt >= floor(cnt * po->TOLERANCE)) )
 			{
-				dsPush(genes,ki);
-				components++;
-				candidates[ki] = FALSE;
+				sub_array = get_intersect_reverse_row(colcand,arr_c[dsItem(genes,0)],arr_c[ki],m_cnt);
+				KL_score = get_KL (sub_array, arr_c[ki], m_cnt, cols);
+				if (KL_score>=b->significance * po->TOLERANCE)
+				{
+					dsPush(genes,ki);
+					components++;
+					candidates[ki] = FALSE;
+				}
 			}
 		}
 		free(colcand);
@@ -389,10 +480,9 @@ int cluster (FILE *fw, Edge **el, int n)
 		scan_block(b_genes, b);
 		if (b->block_cols == 0) continue;
 		b->block_rows = components;
-                if (po->IS_pvalue)
-			b->score = -(100*log(b->pvalue));
-		else
-			b->score = b->block_rows * b->block_cols;		
+
+		b->score = b->score;
+		/*	b->score = b->block_rows * b->block_cols;		*/
 
 		dsClear(b->genes);
 		for ( ki=0; ki < components; ki++)
@@ -413,7 +503,7 @@ int cluster (FILE *fw, Edge **el, int n)
 	/* free-up the candidate list */
 	free(candidates);
 	free(allincluster);
-	free (pvalues);
+	block_enrichment(fw, bb, block_id);
 	return report_blocks(fw, bb, block_id);
 }
 
