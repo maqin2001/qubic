@@ -23,4 +23,4 @@ Eren K, Deveci M, Küçüktunç O, Catalyürek UV, A comparative analysis of bic
 
 
 ## Contact us ##
-Any questions, problems, bugs are welcome and should be dumped to Qin Ma <**_maqin@uga.edu_**>
+Any questions, problems, bugs are welcome and should be dumped to Qin Ma <**_qin.ma@sdstate.edu_**>
